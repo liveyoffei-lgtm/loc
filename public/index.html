@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Location Verification</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:650px;margin:60px auto;padding:20px}
+    .box{border:1px solid #ddd;border-radius:12px;padding:24px}
+    button{padding:11px 16px;border:0;border-radius:8px;cursor:pointer}
+    #status{margin-top:15px}
+  </style>
+</head>
+<body>
+<div class="box">
+  <h1>Location verification</h1>
+  <p>This page can record the visit time, timezone and language. Your precise location will only be sent if you explicitly approve your browser's location request.</p>
+  <button id="share">Share my location</button>
+  <p id="status"></p>
+</div>
+
+<script>
+const status = document.getElementById("status");
+
+document.getElementById("share").addEventListener("click", () => {
+  if (!navigator.geolocation) {
+    status.textContent = "Location services are not supported by this browser.";
+    return;
+  }
+
+  status.textContent = "Waiting for your location permission...";
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const record = {
+      timestamp: new Date().toISOString(),
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || null,
+      language: navigator.language || null,
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude,
+      accuracy_meters: pos.coords.accuracy
+    };
+
+    try {
+      const response = await fetch("/api/location", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(record)
+      });
+
+      if (!response.ok) throw new Error("Server rejected the request");
+      status.textContent = "Location shared successfully.";
+    } catch (err) {
+      console.error(err);
+      status.textContent = "Your location was obtained but could not be sent to the server.";
+    }
+  }, (err) => {
+    status.textContent = "Location was not shared: " + err.message;
+  }, {
+    enableHighAccuracy: false,
+    timeout: 10000,
+    maximumAge: 60000
+  });
+});
+</script>
+</body>
+</html>
